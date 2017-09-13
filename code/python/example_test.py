@@ -3,12 +3,12 @@ import framework
 serial_port = '/dev/ttyACM0'
 end_time    = 20
 
-test = framework.tester(serial_port)
+test = framework.Tester(serial_port)
 
 test.pre_fan(5)
 test.log_till_time(5)
 test.heater_on()
-test.LEDs_on(255, 50)
+test.leds_on(255, 50)
 
 test.log_till_time(10)
 test.mist_on_time(2)
