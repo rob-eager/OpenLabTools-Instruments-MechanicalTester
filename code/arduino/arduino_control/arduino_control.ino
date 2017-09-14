@@ -1,6 +1,10 @@
-#include <SoftwareSerial.h>                                        // We need this even if we're not using a SoftwareSerial object
-                                                                   // Due to the way the Arduino IDE compiles
-#include <SerialCommand.h>
+/*
+ * We need 'SoftwareSerial.h' header even if we're not using a SoftwareSerial objects         
+ * BUT incase you are using the Arduino DUE you will have to comment this header and then follow further instruction in SerialCommand.h for usage of HardwareSerial Only. 
+ */
+//#include <SoftwareSerial.h>  
+
+#include <SerialCommand.h> 
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <Servo.h>
@@ -63,7 +67,7 @@ void setup() {
   Olab_Cmd.addCommand("MIST", mister_on);           // Mister, Cycle_Period, %On
   Olab_Cmd.addCommand("DATA", data_output);         // Data
   Olab_Cmd.addDefaultHandler(unrecognized_params);  // Handler for command that isn't matched  (says "What?")
-  Serial.println("Ready");
+  Serial.println("Mechanical Tester: System Ready!");
 
   // initialize pins:
   digitalWrite(Heater_Pin, HIGH);
