@@ -25,6 +25,13 @@ NOTE:
 #include <DHT.h>
 #include "A4988.h"
 
+//Loadcell config
+#include "HX711.h"
+#define DOUT 28             //DOT Pin
+#define CLK  29            //CLK Pin
+
+HX711 scale(DOUT, CLK);
+float calibration_factor = -9915000;
 
 // Motor steps per revolution. Most steppers are 200 steps or 1.8 degrees/step
 #define Stepper1_MOTOR_STEPS 200
@@ -72,7 +79,7 @@ int LED_Current_Val = 0;
 int LED_Delta = 1;
 int LED_Div = 10;
 
-#define DHT_Pin 9
+#define DHT_Pin 9       //DHT Pin
 
 DHT dht(DHT_Pin, DHT22);
 
@@ -117,16 +124,27 @@ void setup() {
     myCMD.addCommand("UP", moving_up);             // Moving Z beam UP
     myCMD.addCommand("DOWN", moving_down);         // Moving Z beam UP
         // Functions controllers
-    myCMD.addCommand("FANS", fan_update);          // Sets each fan on or off
-    myCMD.addCommand("FLAP", flap_update);         // Flap position
-    myCMD.addCommand("OPEN", close_flap);          // Flap position
-    myCMD.addCommand("CLOSE",open_flap);           // Flap position
-    myCMD.addCommand("LED",  LED_update);          // Flap position
-    myCMD.addCommand("HEAT", heat_update_params);  // Heater, Cycle_Period, %On
-    myCMD.addCommand("MIST", mister_on);           // Mister, Cycle_Period, %On
-    myCMD.addCommand("DATA", data_output);
+//    myCMD.addCommand("CELL", fan_update);          // Sets each fan on or off
+//    myCMD.addCommand("FLAP", flap_update);         // Flap position
+//    myCMD.addCommand("OPEN", close_flap);          // Flap position
+//    myCMD.addCommand("CLOSE",open_flap);           // Flap position
+//    myCMD.addCommand("LED",  LED_update);          // Flap position
+//    myCMD.addCommand("HEAT", heat_update_params);  // Heater, Cycle_Period, %On
+//    myCMD.addCommand("MIST", mister_on);           // Mister, Cycle_Period, %On
+    
+    myCMD.addCommand("DATA", data_output);           // Flap position
+    myCMD.addCommand("WEIGHT", loadcell_output);     // Flap position
+    myCMD.addCommand("RAW", raw_output);        // Flap position
      
     myCMD.addDefaultHandler(unrecognized_cmd);     // For unrecognized commands
+
+    //Load cell init
+    Serial.println("Mechanical Tester: Load cell Init!");
+    scale.set_scale();
+    scale.tare(); //Reset the scale to 0
+    long zero_factor = scale.read_average();
+    delay(300);
+    
     Serial.println("Mechanical Tester: System Ready!");
 
     // initialize pins:
@@ -165,29 +183,33 @@ void setup() {
     Serial.println();
     delay(500);
     Serial.println("Commands Lists:");
-    Serial.println("UP+Amount of Steps  : For moving Z axis up.");
-    Serial.println("DOWN+Amount of Steps: For moving Z axis down.");
-    Serial.println("FANS                : For seting each fan on or off."); 
-    Serial.println("FLAP                : For changing flap postion."); 
-    Serial.println("OPEN                : For closing flap"); 
-    Serial.println("CLOSE               : For opening flap"); 
-    Serial.println("LED                 : For LED conrolling");
-    Serial.println("HEAT                : For heaters operation"); 
-    Serial.println("MIST                : For mister operations"); 
-    Serial.println("DATA                : For sending sensor readouts over serial");
+    Serial.println("UP+Amount of Steps    : For moving Z axis up.");
+    Serial.println("DOWN+Amount of Steps  : For moving Z axis down.");
+    Serial.println("DATA                  : For sending sensor readouts over serial."); 
+    Serial.println("WEIGHT                : For sending weight value over serial."); 
+    Serial.println("RAW                   : For sending loadcell raw data");
+//    Serial.println("FANS                : For seting each fan on or off."); 
+//    Serial.println("FLAP                : For changing flap postion."); 
+//    Serial.println("OPEN                : For closing flap"); 
+//    Serial.println("CLOSE               : For opening flap"); 
+//    Serial.println("LED                 : For LED conrolling");
+//    Serial.println("HEAT                : For heaters operation"); 
+//    Serial.println("MIST                : For mister operations"); 
+//    Serial.println("DATA                : For sending sensor readouts over serial");
+//    Serial.println("LOADCELL            : For sending loadcell readouts over serial");
     Serial.println("Note:");
     Serial.println("1. Carriage return should be enabled in your terminal.");
     Serial.println("2. The plus sign (+) means SPACE, thus Don't put a plus (+).");
     Serial.println("3. It is case sensitive.");
-    
 }
 
 void loop() {
    Current_Time = millis();
+   scale.set_scale(calibration_factor);
    
    myCMD.readSerial();                           // See if there are any incoming commands over serial
 
-   heat_subroutine();
+  // heat_subroutine();
    LED_subroutine();
    mist_subroutine();
    
@@ -297,7 +319,7 @@ void mister_on() {
    Mist_Next_Time = 0;
 }
 
-//hear subroutine
+//heat subroutine
 void heat_subroutine() {
   
   Serial.println("Heater Functions");
@@ -377,7 +399,27 @@ void data_output() {
   Serial.print(" ");
   Serial.print(h = dht.readTemperature());
   Serial.print(" ");
-  Serial.println(h = dht.readHumidity());
+  Serial.print(h = dht.readHumidity());
+  Serial.print(" ");
+  Serial.print("Weight: ");
+  Serial.print((scale.get_units()*453.593), 0);
+  Serial.println(" g");
+  
+}
+
+//Loadcell output subroutine
+void loadcell_output() {
+  Serial.print("Weight: ");
+  Serial.print((scale.get_units()*453.593), 0);
+  Serial.println(" g");
+}
+
+//raw data output subroutine
+void raw_output() {
+  Serial.print("Loadcell Raw Data: ");
+  Serial.println(scale.get_units(),6);
+  Serial.print("Callibration Factor: ");
+  Serial.println(calibration_factor);
 }
 
 //Up motion
@@ -392,8 +434,8 @@ void moving_up(){
     Serial.print(motorSteps );
     Serial.println(" Steps");
     for(int s=0; s<atoi(motorSteps); s++){
-      Stepper1.move(1);
-      Stepper2.move(1);
+      Stepper1.move(-1);
+      Stepper2.move(-1);
       }
     }else{
       Serial.println("ERROR! The Motor Stepps are not defined!");
@@ -413,8 +455,8 @@ void moving_down(){
     Serial.println(" Steps");
     //Sync the two steppers
    for(int s=0; s<atoi(motorSteps); s++){
-      Stepper1.move(-1);    
-      Stepper2.move(-1);
+      Stepper1.move(1);    
+      Stepper2.move(1);
       }
      }else{
       Serial.println("ERROR! The Motor Stepps are not defined!");

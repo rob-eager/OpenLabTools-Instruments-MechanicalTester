@@ -23,8 +23,8 @@
 
 #include "HX711.h"
 
-#define DOUT  3
-#define CLK  2
+#define DOUT 28 // 3
+#define CLK  29 //2
 
 HX711 scale(DOUT, CLK);
 
@@ -57,12 +57,12 @@ void loop() {
   Serial.print(calibration_factor);
   Serial.println();
 
-//  if(Serial.available())
-//  {
-//    char temp = Serial.read();
-//    if(temp == '+' || temp == 'a')
-//      calibration_factor += 10;
-//    else if(temp == '-' || temp == 'z')
-//      calibration_factor -= 10;
-//  }
+  if(Serial.available())
+  {
+    char temp = Serial.read();
+    if(temp == '+' || temp == 'a')
+      calibration_factor += 10;
+    else if(temp == '-' || temp == 'z')
+      calibration_factor -= 10;
+  }
 }
